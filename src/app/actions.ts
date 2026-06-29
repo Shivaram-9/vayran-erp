@@ -11,3 +11,15 @@ export async function saveSetting(key: string, value: string) {
 export async function inviteUser(email: string, role: string) {
   // Mock action for UI demo
 }
+
+export async function addInvoice(formData: FormData) {
+  // Mock action for UI demo
+}
+
+export async function addProject(formData: FormData) {
+  // Mock action for UI demo
+}
+
+export async function addEmployee(formData: FormData) {
+  // Mock action for UI demo
+}
