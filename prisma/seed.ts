@@ -8,10 +8,10 @@ async function main() {
   
   // Seed Employees
   const emp1 = await prisma.employee.create({
-    data: { name: 'Alice Johnson', role: 'Frontend Developer', department: 'Engineering', status: 'Active' },
+    data: { name: 'Alice Johnson', jobTitle: 'Frontend Developer', status: 'Active' },
   });
   const emp2 = await prisma.employee.create({
-    data: { name: 'Bob Smith', role: 'Product Manager', department: 'Product', status: 'On Leave' },
+    data: { name: 'Bob Smith', jobTitle: 'Product Manager', status: 'On Leave' },
   });
   
   // Seed Projects
