@@ -14,21 +14,6 @@ async function main() {
     data: { name: 'Bob Smith', jobTitle: 'Product Manager', status: 'On Leave' },
   });
   
-  // Seed Projects
-  const proj1 = await prisma.project.create({
-    data: { title: 'ERP Migration', description: 'Migrating legacy data to the new VAYRAN ERP system.', status: 'In Progress', progress: 65 },
-  });
-  
-  // Seed Invoices
-  const inv1 = await prisma.invoice.create({
-    data: { invoiceId: 'INV-2024-001', client: 'Acme Corp', amount: 12500.00, status: 'Paid' },
-  });
-  
-  // Seed Leads
-  const lead1 = await prisma.lead.create({
-    data: { name: 'TechFlow Systems', company: 'TechFlow', value: 50000.00, status: 'New' },
-  });
-
   console.log(`Seeding finished.`);
 }
 
