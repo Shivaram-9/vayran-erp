@@ -1,0 +1,61 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import Modal from './Modal';
+import { addLead } from '@/app/actions';
+import { useToast } from './Toast';
+
+export default function CRMHeader() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { showToast } = useToast();
+
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      await addLead(formData);
+      setIsModalOpen(false);
+      showToast("Lead added successfully!", "success");
+    });
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Customer Relationship Management</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Manage leads, clients, and sales pipelines.</p>
+        </div>
+        <button className="btn" onClick={() => setIsModalOpen(true)}>+ Add Lead</button>
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Lead">
+        <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Contact Name</label>
+            <input type="text" name="name" required style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Company</label>
+            <input type="text" name="company" required style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Est. Value ($)</label>
+            <input type="number" name="value" required style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Status</label>
+            <select name="status" style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+              <option value="New">New</option>
+              <option value="In Negotiation">In Negotiation</option>
+              <option value="Closed Won">Closed Won</option>
+              <option value="Closed Lost">Closed Lost</option>
+            </select>
+          </div>
+          <button type="submit" className="btn" style={{ marginTop: '16px', opacity: isPending ? 0.7 : 1 }} disabled={isPending}>
+            {isPending ? 'Saving...' : 'Save Lead'}
+          </button>
+        </form>
+      </Modal>
+    </>
+  );
+}

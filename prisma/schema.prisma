@@ -1,0 +1,1137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// BLOCK 6: RBAC & SYSTEM CORE
+// ==========================================
+
+model User {
+  id    String  @id @default(uuid())
+  email String  @unique
+  name  String?
+
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id])
+
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id          String  @id @default(uuid())
+  name        String  @unique // System Owner, CEO, Employee, etc.
+  description String?
+
+  permissions RolePermission[]
+  users       User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Permission {
+  id     String @id @default(uuid())
+  module String // e.g., HR, Finance, Projects
+  action String // Read, Write, Delete, All
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// ==========================================
+// BLOCK 4: COMPANY HIERARCHY
+// ==========================================
+
+model Company {
+  id              String   @id @default(uuid())
+  name            String
+  legalName       String?
+  registrationNo  String?
+  taxId           String?
+  industry        String?
+  website         String?
+  email           String?
+  phone           String?
+  headquarters    String?
+  country         String?
+  currency        String?
+  timezone        String?
+  fiscalYearStart String?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branches      Branch[]
+  businessUnits BusinessUnit[]
+  departments   Department[]
+  teams         Team[]
+  employees     Employee[]
+  projects      Project[]
+
+  chartOfAccounts  ChartOfAccounts[]
+  costCenters      CostCenter[]
+  taxes            Tax[]
+  customerInvoices CustomerInvoice[]
+  vendorInvoices   VendorInvoice[]
+  budgets          Budget[]
+  payments         Payment[]
+  generalLedgers   GeneralLedger[]
+  financialReports FinancialReport[]
+
+  warehouses       Warehouse[]
+  products         Product[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
+  goodsReceipts    GoodsReceipt[]
+  vendors          Vendor[]
+  assets           Asset[]
+
+  savedReports     SavedReport[]
+  scheduledReports ScheduledReport[]
+
+  systemSettings SystemSetting[]
+  integrations   Integration[]
+  auditLogs      AuditLog[]
+  securityAlerts SecurityAlert[]
+  systemBackups  SystemBackup[]
+
+  workflowTemplates WorkflowTemplate[]
+  workflowInstances WorkflowInstance[]
+  approvalRequests  ApprovalRequest[]
+}
+
+model Branch {
+  id         String  @id @default(uuid())
+  name       String
+  code       String?
+  manager    String?
+  country    String?
+  state      String?
+  city       String?
+  address    String?
+  postalCode String?
+  timezone   String?
+  currency   String?
+  status     String  @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  departments Department[]
+  employees   Employee[]
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  warehouses Warehouse[]
+}
+
+model BusinessUnit {
+  id          String  @id @default(uuid())
+  name        String
+  code        String?
+  head        String?
+  description String?
+  status      String  @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  divisions   Division[]
+  departments Department[]
+  employees   Employee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Division {
+  id     String  @id @default(uuid())
+  name   String
+  code   String?
+  head   String?
+  status String  @default("Active")
+
+  businessUnitId String
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  departments Department[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Department {
+  id         String  @id @default(uuid())
+  name       String
+  code       String?
+  head       String?
+  costCenter String?
+  budget     Float?  @default(0)
+  status     String  @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  businessUnitId String?
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+
+  divisionId String?
+  division   Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+
+  teams     Team[]
+  employees Employee[]
+  projects  Project[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  purchaseRequests PurchaseRequest[]
+}
+
+model Team {
+  id            String  @id @default(uuid())
+  name          String
+  lead          String?
+  status        String  @default("Active")
+  capacity      Int?    @default(0)
+  currentSprint String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  employees Employee[]
+  projects  Project[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 5: ENTERPRISE HRMS
+// ==========================================
+
+model Employee {
+  id           String    @id @default(uuid())
+  employeeCode String?   @unique
+  name         String
+  jobTitle     String?
+  status       String    @default("Active")
+  joinDate     DateTime?
+
+  user User?
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  businessUnitId String?
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  managerId    String?
+  manager      Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates Employee[] @relation("EmployeeManager")
+
+  attendances   Attendance[]
+  leaveRequests LeaveRequest[]
+  payrolls      Payroll[]
+  timeEntries   TimeEntry[]
+  tasks         Task[]
+  expenses      Expense[]
+
+  purchaseRequests PurchaseRequest[]
+  assetAssignments AssetAssignment[]
+
+  savedReports     SavedReport[]
+  scheduledReports ScheduledReport[]
+
+  auditLogs AuditLog[]
+
+  workflowInstances WorkflowInstance[]
+  approvalRequests  ApprovalRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id       String    @id @default(uuid())
+  date     DateTime
+  checkIn  DateTime?
+  checkOut DateTime?
+  status   String    @default("Present") // Present, Absent, Half-Day
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LeaveRequest {
+  id        String   @id @default(uuid())
+  type      String // Sick, Casual, Earned
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  status    String   @default("Pending") // Pending, Approved, Rejected
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payroll {
+  id         String @id @default(uuid())
+  month      String
+  year       Int
+  basic      Float
+  allowances Float
+  deductions Float
+  netPay     Float
+  status     String @default("Draft")
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 7: PROJECT MANAGEMENT
+// ==========================================
+
+model Project {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  status      String    @default("Planning")
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Float?
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  tasks   Task[]
+  sprints Sprint[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sprint {
+  id        String    @id @default(uuid())
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  status    String    @default("Active")
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  status      String  @default("Todo") // Todo, In Progress, Review, Done
+  priority    String  @default("Medium") // Low, Medium, High
+  points      Int?    @default(0)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  sprintId String?
+  sprint   Sprint? @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+
+  assigneeId String?
+  assignee   Employee? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  timeEntries TimeEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  hours       Float
+  date        DateTime
+  description String?
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 8: ENTERPRISE FINANCE & ACCOUNTING
+// ==========================================
+
+model ChartOfAccounts {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  accounts Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id     String @id @default(uuid())
+  code   String @unique
+  name   String
+  type   String // Asset, Liability, Equity, Revenue, Expense
+  status String @default("Active")
+
+  chartOfAccountsId String
+  chartOfAccounts   ChartOfAccounts @relation(fields: [chartOfAccountsId], references: [id], onDelete: Cascade)
+
+  journalEntries JournalEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CostCenter {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  name        String
+  description String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  budgets  Budget[]
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tax {
+  id     String @id @default(uuid())
+  name   String
+  rate   Float
+  status String @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CustomerInvoice {
+  id        String   @id @default(uuid())
+  invoiceNo String   @unique
+  customer  String
+  amount    Float
+  dueDate   DateTime
+  status    String   @default("Draft") // Draft, Sent, Paid, Overdue
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VendorInvoice {
+  id      String   @id @default(uuid())
+  billNo  String   @unique
+  vendor  String
+  amount  Float
+  dueDate DateTime
+  status  String   @default("Draft") // Draft, Pending, Paid, Overdue
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseCategory {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  amount      Float
+  date        DateTime
+  status      String   @default("Pending") // Pending, Approved, Rejected, Reimbursed
+
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+
+  costCenterId String?
+  costCenter   CostCenter? @relation(fields: [costCenterId], references: [id])
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Budget {
+  id          String @id @default(uuid())
+  name        String
+  year        Int
+  totalAmount Float
+  utilized    Float  @default(0)
+
+  costCenterId String
+  costCenter   CostCenter @relation(fields: [costCenterId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id     String   @id @default(uuid())
+  amount Float
+  date   DateTime
+  method String // Bank Transfer, Credit Card, Cash
+
+  customerInvoiceId String?
+  customerInvoice   CustomerInvoice? @relation(fields: [customerInvoiceId], references: [id])
+
+  vendorInvoiceId String?
+  vendorInvoice   VendorInvoice? @relation(fields: [vendorInvoiceId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid())
+  date        DateTime
+  description String
+  debit       Float    @default(0)
+  credit      Float    @default(0)
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  generalLedgerId String
+  generalLedger   GeneralLedger @relation(fields: [generalLedgerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GeneralLedger {
+  id     String @id @default(uuid())
+  period String // e.g., "2026-Q1"
+  status String @default("Open") // Open, Closed
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  entries JournalEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FinancialReport {
+  id     String @id @default(uuid())
+  title  String
+  type   String // Balance Sheet, P&L, Cash Flow
+  period String
+  data   String // JSON stringified report data
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 9: INVENTORY & PROCUREMENT
+// ==========================================
+
+model Warehouse {
+  id      String  @id @default(uuid())
+  name    String
+  code    String  @unique
+  address String?
+  status  String  @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  locations   WarehouseLocation[]
+  inventories Inventory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WarehouseLocation {
+  id      String  @id @default(uuid())
+  zone    String
+  rack    String
+  bin     String
+  barcode String?
+
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  inventories Inventory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCategory {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String  @id @default(uuid())
+  sku         String  @unique
+  name        String
+  description String?
+  uom         String // Unit of Measure
+  price       Float
+  cost        Float?
+  status      String  @default("Active")
+  barcode     String?
+
+  categoryId String
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  variants    ProductVariant[]
+  inventories Inventory[]
+  orderItems  PurchaseOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductVariant {
+  id         String @id @default(uuid())
+  sku        String @unique
+  name       String
+  attributes String // JSON string of size, color, etc.
+  price      Float?
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Inventory {
+  id           String    @id @default(uuid())
+  quantity     Float     @default(0)
+  reorderLevel Float     @default(0)
+  batchNumber  String?
+  serialNumber String?
+  expiryDate   DateTime?
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
+  warehouseLocationId String?
+  location            WarehouseLocation? @relation(fields: [warehouseLocationId], references: [id])
+
+  transactions InventoryTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryTransaction {
+  id        String   @id @default(uuid())
+  type      String // In, Out, Transfer, Adjustment
+  quantity  Float
+  date      DateTime
+  reference String? // PO Number, Transfer Number, etc.
+  notes     String?
+
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockAdjustment {
+  id     String   @id @default(uuid())
+  reason String
+  status String   @default("Pending") // Pending, Approved, Rejected
+  date   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockTransfer {
+  id         String   @id @default(uuid())
+  transferNo String   @unique
+  status     String   @default("Pending") // Pending, Shipped, Received
+  date       DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Procurement
+model Vendor {
+  id           String  @id @default(uuid())
+  name         String
+  vendorCode   String  @unique
+  email        String?
+  phone        String?
+  taxId        String?
+  address      String?
+  paymentTerms String?
+  rating       Float?  @default(0)
+  status       String  @default("Active")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  contacts       VendorContact[]
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VendorContact {
+  id    String  @id @default(uuid())
+  name  String
+  email String?
+  phone String?
+  role  String?
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseRequest {
+  id        String   @id @default(uuid())
+  requestNo String   @unique
+  status    String   @default("Pending") // Pending, Approved, Rejected, Ordered
+  date      DateTime
+  notes     String?
+
+  requesterId String
+  requester   Employee @relation(fields: [requesterId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseOrder {
+  id          String   @id @default(uuid())
+  orderNo     String   @unique
+  status      String   @default("Draft") // Draft, Issued, Partially Received, Received, Cancelled
+  date        DateTime
+  totalAmount Float    @default(0)
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  items    PurchaseOrderItem[]
+  receipts GoodsReceipt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseOrderItem {
+  id        String @id @default(uuid())
+  quantity  Float
+  unitPrice Float
+  total     Float
+
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GoodsReceipt {
+  id        String   @id @default(uuid())
+  receiptNo String   @unique
+  date      DateTime
+  status    String   @default("Completed")
+  notes     String?
+
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Enterprise Asset Management (EAM)
+model Asset {
+  id           String    @id @default(uuid())
+  assetCode    String    @unique
+  name         String
+  category     String // IT, Furniture, Machinery, Vehicle
+  status       String    @default("Available") // Available, Assigned, Maintenance, Retired
+  purchaseDate DateTime?
+  purchaseCost Float?
+  qrCode       String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignments   AssetAssignment[]
+  maintenance   AssetMaintenance[]
+  depreciations AssetDepreciation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AssetAssignment {
+  id           String    @id @default(uuid())
+  assignedDate DateTime
+  returnDate   DateTime?
+  status       String    @default("Active") // Active, Returned
+  notes        String?
+
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AssetMaintenance {
+  id    String   @id @default(uuid())
+  date  DateTime
+  type  String // Routine, Repair
+  cost  Float    @default(0)
+  notes String?
+
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AssetDepreciation {
+  id    String   @id @default(uuid())
+  date  DateTime
+  value Float
+
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 10: REPORTS & ANALYTICS
+// ==========================================
+
+model SavedReport {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  type        String // e.g., HR, Finance, Inventory
+  config      String // JSON stringified chart configuration
+
+  creatorId String
+  creator   Employee @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduledReport {
+  id         String @id @default(uuid())
+  name       String
+  frequency  String // Daily, Weekly, Monthly
+  recipients String // Comma-separated emails
+  format     String // PDF, Excel
+
+  savedReportId String
+
+  creatorId String
+  creator   Employee @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// BLOCK 11: ADMINISTRATION & SETTINGS
+// ==========================================
+
+model SystemSetting {
+  id       String @id @default(uuid())
+  category String // e.g., 'Branding', 'Localization', 'Email'
+  key      String
+  value    String
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Integration {
+  id         String  @id @default(uuid())
+  provider   String // e.g., 'Stripe', 'Slack', 'Google Workspace'
+  apiKey     String?
+  webhookUrl String?
+  isActive   Boolean @default(false)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String  @id @default(uuid())
+  action    String // e.g., 'USER_CREATED', 'SETTINGS_UPDATED'
+  module    String // e.g., 'HRMS', 'FINANCE', 'ADMIN'
+  details   String // JSON stringified details
+  ipAddress String?
+
+  actorId String
+  actor   Employee @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model SecurityAlert {
+  id       String  @id @default(uuid())
+  type     String // e.g., 'FAILED_LOGIN', 'SUSPICIOUS_IP'
+  severity String // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+  message  String
+  resolved Boolean @default(false)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model SystemBackup {
+  id     String @id @default(uuid())
+  status String // 'COMPLETED', 'FAILED', 'IN_PROGRESS'
+  size   String // e.g., '1.2 GB'
+  type   String // 'MANUAL', 'AUTOMATED'
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// BLOCK 12: WORKFLOW & AUTOMATION
+// ==========================================
+
+model WorkflowTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  category    String // e.g., 'HR', 'Finance', 'System'
+  trigger     String // e.g., 'ON_USER_CREATED', 'MANUAL'
+  nodes       String // JSON stringified React Flow nodes
+  edges       String // JSON stringified React Flow edges
+  isActive    Boolean @default(true)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  instances WorkflowInstance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowInstance {
+  id          String @id @default(uuid())
+  status      String // 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'CANCELLED'
+  currentStep String // Name or ID of current node
+  context     String // JSON payload of variables/data
+
+  templateId String
+  template   WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  initiatorId String
+  initiator   Employee @relation(fields: [initiatorId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  approvals ApprovalRequest[]
+  logs      WorkflowLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApprovalRequest {
+  id       String    @id @default(uuid())
+  status   String // 'PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'
+  stepName String
+  comments String?
+  dueDate  DateTime?
+
+  instanceId String
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  assigneeId String
+  assignee   Employee @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowLog {
+  id      String @id @default(uuid())
+  action  String
+  details String
+
+  instanceId String
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
