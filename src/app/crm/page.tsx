@@ -4,7 +4,11 @@ import CRMHeader from '@/components/CRMHeader';
 export const dynamic = 'force-dynamic';
 
 export default async function CRM() {
-  const leads = await prisma.lead.findMany();
+  const leads: any[] = [
+    { id: 1, name: 'John Doe', company: 'TechFlow', value: 50000, status: 'New' },
+    { id: 2, name: 'Jane Smith', company: 'Acme Corp', value: 12000, status: 'In Negotiation' },
+    { id: 3, name: 'Bob Johnson', company: 'Global Ind.', value: 85000, status: 'Closed Won' }
+  ];
   
   const newLeads = leads.filter(l => l.status === 'New');
   const inNegotiation = leads.filter(l => l.status === 'In Negotiation');
